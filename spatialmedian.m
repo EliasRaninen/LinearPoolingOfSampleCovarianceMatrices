@@ -24,7 +24,6 @@ for iter = 1:iterMAX
 
    Xc = bsxfun(@minus,X,smed0);
    len = sqrt(sum(Xc.^2,2));
-   assert(numel(len(len<EPS)) == 0)
    len(len<EPS)= EPS;
    Xpsi = bsxfun(@rdivide, Xc, len);
    update = sum(Xpsi)/sum(1./len);
