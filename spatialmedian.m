@@ -41,8 +41,7 @@ for iter = 1:iterMAX
 end
 
 % check zero gradient equation
-meangrad = mean(abs(sum(Xpsi)));
-assert(meangrad < 1e-12);
+%meangrad = mean(abs(sum(Xpsi)));
 
 if iter == iterMAX
     fprintf('Spatialmedian.m : slow convergence, iterMAX reached. dis: %e, TOL: %e\n',dis,TOL)
