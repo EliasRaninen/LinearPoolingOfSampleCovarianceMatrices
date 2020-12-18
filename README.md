@@ -4,6 +4,8 @@ This repository contains Matlab code of the proposed estimator in the paper E. R
 
 <strong> Python </strong> code for the estimator can be found from https://github.com/EliasRaninen/CoupledRSCM/tree/main/Python.
 
+<strong> Note (18.12.2020): a new version supporting complex-valued data will be uploaded soon.  </strong>
+
 ## Authors
 - Elias Raninen, Doctoral Candidate, Department of Signal Processing and Acoustics, Aalto University.
 - David E. Tyler, Distinguished Professor, Department of Statistics, Rutgers University.
