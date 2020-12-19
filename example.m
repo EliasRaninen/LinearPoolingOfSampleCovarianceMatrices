@@ -12,7 +12,7 @@
 %
 % This script demonstrates the proposed linear pooling of SCMs.
 %
-% By E. Raninen 2020
+% By E. Raninen and Esa Ollila (2020)
 
 clear; clc;
 rng(123);
@@ -70,17 +70,13 @@ for mc=1:nmc
     end
     
     %% Estimate covariance matrices from the data
-    params = estimate_parameters(dataFromClasses);
     
     % without identity shrinkage
-    C = params.trCiCj/p;
-    D = diag(params.MSE_Sk)/p;
-    [LIN_POOL_1, A_1] = linpoolQP(params.SCM,C,D,1:K);
+    [LIN_POOL_1, A_1] = linpool(dataFromClasses,'linear',false);
     
     % with identity shrinkage
-    C_tilde = [C params.eta; params.eta.' 1];
-    D_tilde = [D zeros(K,1); zeros(1,K) 0];
-    [LIN_POOL_2, A_2] = linpoolQP([params.SCM; eye(p)],C_tilde,D_tilde,1:K);
+    [LIN_POOL_2, A_2] = linpool(dataFromClasses,'linear',true);
+
     
     %% Compute normalized squared error NSE
     NSE = @(A,k) norm(A-trueCovarianceMatrices{k},'fro')^2/norm(trueCovarianceMatrices{k},'fro')^2;
@@ -95,19 +91,19 @@ fprintf('\n');
 %% NMSE
 
 % Average results over Monte Carlos
-NMSE1 = mean(NSE1); STD1 = std(NSE1);
-NMSE2 = mean(NSE2); STD2 = std(NSE2);
+NMSE1 = [mean(NSE1) mean(sum(NSE1,2))]; STD1 = [std(NSE1) std(sum(NSE1,2))];
+NMSE2 = [mean(NSE2) mean(sum(NSE2,2))]; STD2 = [std(NSE2) std(sum(NSE2,2))];
 
 disp('Normalized MSE and standard deviation for the four classes.');
 fprintf('(averaged over %d Monte Carlo trials.)\n',nmc);
 % Table for NMSE
 T = splitvars(table(round([NMSE1;NMSE2],2)));
-T.Properties.VariableNames = {'AR1(0.3)','AR1(0.4)','CS(0.5)','CS(0.6)'};
+T.Properties.VariableNames = {'AR1(0.3)','AR1(0.4)','CS(0.5)','CS(0.6)','Sum'};
 T.Properties.RowNames = {'LIN1 NMSE:','LIN2 NMSE:'};
 disp(T);
 
 % Table for standard deviation
 Tstd = splitvars(table(round([STD1;STD2],3)));
-Tstd.Properties.VariableNames = {'AR1(0.3)','AR1(0.4)','CS(0.5)','CS(0.6)'};
+Tstd.Properties.VariableNames = {'AR1(0.3)','AR1(0.4)','CS(0.5)','CS(0.6)','Sum'};
 Tstd.Properties.RowNames = {'LIN1 STD:','LIN2 STD:'};
 disp(Tstd)
