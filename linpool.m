@@ -1,14 +1,16 @@
-function [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirst)
-% LINPOOL computes regularized sample covariance matrix estimates by pooling the
-% class SCMs (and possibly the identity matrix) via a non-negative linear
-% combination as explained in E. Raninen, D. E. Tyler, and E. Ollila, "Linear
-% pooling of sample covariance matrices", arXiv preprint, arXiv:2008.05854,
-% 2020.
+function [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirst,aI_LB)
+% LINPOOL computes regularized sample covariance matrix estimates by pooling
+% the class SCMs (and possibly the identity matrix) via a non-negative
+% linear combination as explained in E. Raninen, D. E. Tyler, and E. Ollila,
+% "Linear pooling of sample covariance matrices", arXiv preprint,
+% arXiv:2008.05854, 2021.
 %
 % Each class covariance matrix estimate is:
 %                K
 %  Sigmas{k} =  SUM A(j,k)*SCM{j} + A(K+1,k)*eye(p),
 %               j=1
+%
+%  where A(K+1,k) >= aI_LB  (default value aI_LB = 1e-8)
 %
 % IMPLEMENTATION:
 %   The function first computes the unconstrained solution for the optimal
@@ -19,7 +21,7 @@ function [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirs
 %
 % USAGE:
 %
-% [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirst)
+% [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirst,aI_LB)
 %
 % [Sigmas, A, params, QPflag] = linpool(DataCell)
 % [Sigmas, A, params, QPflag] = linpool(DataCell,'convex')
@@ -34,24 +36,55 @@ function [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirs
 %                   combination of the SCMs.
 %       identity  - true or false (logical). Default is true. When true,
 %                   shrinkage towards the identity matrix is included.
-%       onlyfirst - true or false (logical). Default is false. When true, the
-%                   estimator is computed only for the first class (k=1).
+%       onlyfirst - true or false (logical). Default is false. When true,
+%                   the estimator is computed only for the first class
+%                   (k=1).
+%       aI_LB     - minimum value for the coefficient corresponding to the
+%                   identity matrix, i.e., A(K+1,k) >= aI_LB(k). By default
+%                   aI_LB = 1e-8. In low sample size cases, when A(K+1,k)
+%                   is close to zero there may be a possibility that the
+%                   estimate is not well-conditioned despite having a low
+%                   MSE. This can result in high error when inverting the
+%                   estimate. In these cases it may be useful to increase
+%                   the lower bound.
+%                    
 %
 % OUTPUT:
-%       Sigmas    - a Kx1 cell array of computed covariance matrix estimates.
+%       Sigmas    - a Kx1 cell array of computed covariance matrix
+%                   estimates.
 %       A         - a (K+1)xK matrix of coefficients used in the linear
 %                   combination.
 %       SCM       - a Kx1 cell array of computed SCMs.
 %       params    - a stuct of computed statistical parameters.
-%       QPflag    - is true (logical) if any of the weights was negative,
-%                   and hence QP solver was used for at least one class.
+%       QPflag    - is true (logical) if QP solver was used for at least
+%                   one class.
 
 % Here,
 %  K   : the total number of classes,
 %  n_k : the number of samples,
 %  p   : the dimension of the samples.
 %
-% By E. Raninen and E. Ollila (2020)
+%
+% UPDATE HISTORY:
+%   Aug 13, 2020:
+%       - initial version.
+%   Oct  2, 2020 and Nov  3, 2020: 
+%       - cleaned spatialmedian.m (removed assert functions).
+%   Dec 19, 2020:
+%       - updated to support complex-valued data. Also moved all functions
+%         to the same file linpool.m.
+%   Aug 20, 2021:
+%       - added possibility to determine a lower-bound (aI_LB) for the
+%         shrinkage intensity of the identity matrix. In certain cases (not
+%         always), increasing the lower-bound can reduce the error, when
+%         inverting the matrix.
+%       - fixed a bug related to ensuring that the theoretical lower-bound
+%         of the kurtosis is respected. In the updated code, if the
+%         estimated kurtosis is equal or less than the theoretical
+%         lower-bound, it is set to 0.99 * theoretical lower bound.
+%       - added update history.
+%
+% By E. Raninen and E. Ollila (2021)
 
 verbose = false;
 K = numel(DataCell); % number of classes
@@ -82,6 +115,7 @@ else
     linear = true;
 end
 
+
 opts = optimoptions('quadprog','Display','Off');
 
 % Compute the parameter matrices C and D
@@ -90,6 +124,15 @@ params.C = C;
 params.SCM = SCM;
 
 if identity % if shrinkage towards the identity is included
+    if nargin < 5 || isempty(aI_LB)
+        aI_LB = 1e-8*ones(1,K);
+    elseif length(aI_LB) == 1
+        aI_LB = aI_LB(1)*ones(1,K);
+    elseif numel(aI_LB) == K
+        aI_LB = aI_LB(:).';
+    else
+        error('linpool.m: value of aI_LB is not valid.');
+    end
     C = [C params.eta; params.eta.' 1];
     D = [D zeros(K,1); zeros(1,K) 0];
 end
@@ -99,20 +142,29 @@ if linear % non-negative linear combination
     A = (C + D)\C(:,G);
     A(abs(A(:))<eps) = 0;
 
-    if any(A(:)<0) % use QP solver quadprog.m if there are negative coefficients.
-
-        QPflag = true;
-        neg_ind = G(any(A<0));
-
-        for k = neg_ind
+    % use QP solver quadprog.m if there are negative coefficients or if the
+    % coefficient for the identity is not positive
+    neg_ind = any(A<0); % negative coefficients
+    if identity
+        force_identity_shrinkage_ind = (A(K+1,G) < aI_LB(G));
+    else
+        force_identity_shrinkage_ind = false(1,numel(G));
+    end
+    
+    QP_ind = or(neg_ind,force_identity_shrinkage_ind);
+    lb = zeros(size(C,1),1); % lower bound of coefficients
+    if any(QP_ind)
+        QPflag = true;        
+        for k = G(QP_ind)
             % solve coefficients of linear combination
             if verbose
-                fprintf('A negative value for vector a_%d was found!\n',G(k));
-                fprintf('So running the QP solver with positivity constraint\n');
+                fprintf('Running the QP solver with positivity constraint of class %d.\n',G(k));
             end
-
-             % QP with positivity constraint
-             A(:,k) = quadprog(D + C,-C(:,k),[],[],[],[],zeros(size(C,1),1),[],[],opts);
+            if identity
+                lb(end) = aI_LB(k);
+            end
+            % QP with positivity constraint
+            A(:,k) = quadprog(D + C,-C(:,k),[],[],[],[],lb,[],[],opts);
         end
     end
 
@@ -120,10 +172,14 @@ else % convex combination
     QPflag = true;
     % imposing the constaint that weights are positive and sum to 1 for each class
     A = nan(size(C(:,G)));
+    
+    lb = zeros(size(C,1),1); % lower bound of coefficients
+
     for k = G
-        A(:,k) = quadprog(D + C,-C(:,k),[],[],ones(1,size(C,1)),1,zeros(size(C,1),1),[],[],opts);
-        % this is the same as :
-        %A(:,k) = quadprog(D + C,-C(:,k),-eye(size(C)),zeros(size(C,1),1),ones(1,size(C,1)),1,[],[],[],opts);
+        if identity
+            lb(end) = aI_LB(k);
+        end
+        A(:,k) = quadprog(D + C,-C(:,k),[],[],ones(1,size(C,1)),1,lb,[],[],opts);
     end
 end
 
@@ -248,8 +304,8 @@ function [gammahat,gammahat0] = estimate_sphericity(SSCM,d)
 %
 % OUTPUTS:
 %
-%   gammahat        Estimator of sphericity. The sphericity estimator uses a
-%                   correction factor developed in C. Zou et. al.
+%   gammahat        Estimator of sphericity. The sphericity estimator uses
+%                   a correction factor developed in C. Zou et. al.
 %                   "Multivariate sign-based high-dimensional tests for
 %                   sphericity,” Biometrika, vol. 101, no. 1, pp. 229–236,
 %                   2014, that improves gammahat0 estimator when p/n is
@@ -264,10 +320,13 @@ p = size(SSCM,1);
 assert(size(SSCM,1)==size(SSCM,2));
 n = numel(d);
 
+m3 = mean(d.^(-3));
 m2 = mean(d.^(-2));
 m1 = mean(1./d);
 ratio = m2/(m1^2);
-delta= (1/n^2)*(2 - 2*ratio + ratio^2);
+ratio3 = m3/(m1^3);
+delta = (1/n^2)*(2 - 2*ratio + ratio^2) + ...
+    (1/n^3)*(8*ratio - 6*ratio^2 + 2*ratio*ratio3 - 2*ratio3);
 
 gammahat0 = (p*n/(n-1))*(trace(SSCM^2) - 1/n);
 gammahat0 = real(gammahat0);
@@ -305,11 +364,6 @@ if isreal(X)
 else 
     ka_lb = -1/(p+1); % theoretical lower bound for kurtosis parameter
 end
-% If the estimate of kappa, kappahat, is smaller than (1+delta) x theoretical 
-% lower bound, then set kappahat = (1+delta) x kappahat, where delta is 
-% small positive number 
-
-delta = (abs(ka_lb))/40;
 
 if nargin < 4 || isempty(print_info)
     print_info = false;
@@ -353,8 +407,9 @@ if kappahat > 1e6
     error('estimate_kurt: something is wrong, too large value for kurtosis\n');
 end
 
-if kappahat <= (1+delta)*ka_lb
-      kappahat = (1+delta)*ka_lb;
+% kappahat has to be strictly larger than ka_lb
+if kappahat <= ka_lb
+      kappahat = 0.99*ka_lb;
 end
 end
 

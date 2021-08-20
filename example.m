@@ -8,22 +8,23 @@
 % coefficients for the linear combination when the samples are drawn from
 % (unspecified) elliptically symmetric distributions with finite fourth 
 % moments. For more information, see E. Raninen, D.E. Tyler, and E. Ollila
-% "Linear pooling of sample covariance matrices".
-%
+% "Linear pooling of sample covariance matrices", arXiv preprint,
+% arXiv:2008.05854, 2021.
+
 % This script demonstrates the proposed linear pooling of SCMs.
 %
-% By E. Raninen and Esa Ollila (2020)
+% By E. Raninen and E. Ollila (2021)
 
 clear; clc;
-rng(123);
+rng(0);
 
 %% Define four classes (populations)
 % number of classes
 K = 4;
 % number of samples
-n = [50 75 100 125].';
+n = [20 100 20 100].';
 % dimension
-p = 200;
+p = 100;
 
 % function for generating AR1
 AR1cov = @(r,p) r.^abs(repmat(1:p,p,1)-repmat(1:p,p,1)');
@@ -32,10 +33,10 @@ CScov  = @(r,p) r*(ones(p)-eye(p)) + eye(p);
 
 % the population covariance matrices
 rho = [0.3 0.4 0.5 0.6];
-trueCovarianceMatrices{1} = AR1cov(rho(1),p);
-trueCovarianceMatrices{2} = AR1cov(rho(2),p);
-trueCovarianceMatrices{3} = CScov(rho(3),p);
-trueCovarianceMatrices{4} = CScov(rho(4),p);
+trueCovarianceMatrices{1} = 1*AR1cov(rho(1),p);
+trueCovarianceMatrices{2} = 2*AR1cov(rho(2),p);
+trueCovarianceMatrices{3} = 3*CScov(rho(3),p);
+trueCovarianceMatrices{4} = 4*CScov(rho(4),p);
 
 % the means of the classes
 trueMeans{1} = randn(p,1);
@@ -45,7 +46,7 @@ trueMeans{4} = randn(p,1);
 
 %% Monte Carlo loop
 % number of Monte Carlos
-nmc = 300;
+nmc = 1000;
 
 NSE1 = nan(nmc,K); % normalized squared error (NSE) for LIN1
 NSE2 = nan(nmc,K); % for LIN2
@@ -71,11 +72,11 @@ for mc=1:nmc
     
     %% Estimate covariance matrices from the data
     
-    % without identity shrinkage
-    [LIN_POOL_1, A_1] = linpool(dataFromClasses,'linear',false);
-    
     % with identity shrinkage
-    [LIN_POOL_2, A_2] = linpool(dataFromClasses,'linear',true);
+    [LIN_POOL_1, A_1] = linpool(dataFromClasses,'linear');
+    
+    % convex with identity shrinkage
+    [LIN_POOL_2, A_2] = linpool(dataFromClasses,'convex');
 
     
     %% Compute normalized squared error NSE
@@ -99,11 +100,11 @@ fprintf('(averaged over %d Monte Carlo trials.)\n',nmc);
 % Table for NMSE
 T = splitvars(table(round([NMSE1;NMSE2],2)));
 T.Properties.VariableNames = {'AR1(0.3)','AR1(0.4)','CS(0.5)','CS(0.6)','Sum'};
-T.Properties.RowNames = {'LIN1 NMSE:','LIN2 NMSE:'};
+T.Properties.RowNames = {'LINPOOL-Linear NMSE:','LINPOOL-Convex NMSE:'};
 disp(T);
 
 % Table for standard deviation
 Tstd = splitvars(table(round([STD1;STD2],3)));
 Tstd.Properties.VariableNames = {'AR1(0.3)','AR1(0.4)','CS(0.5)','CS(0.6)','Sum'};
-Tstd.Properties.RowNames = {'LIN1 STD:','LIN2 STD:'};
+Tstd.Properties.RowNames = {'LINPOOL-Linear STD:','LINPOOL-Convex STD:'};
 disp(Tstd)
