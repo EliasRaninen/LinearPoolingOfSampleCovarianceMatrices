@@ -1,6 +1,6 @@
 # Linear Pooling Of Sample Covariance Matrices
 
-This repository contains MATLAB code of the proposed covariance matrix estimator in the paper E. Raninen, D. E. Tyler, and E. Ollila, "Linear pooling of sample covariance matrices", 2021, arXiv:2008.05854 [stat.ME]. A preprint is available from https://arxiv.org/abs/2008.05854. We are currently revising the paper.
+This repository contains MATLAB code of the proposed covariance matrix estimator in the paper E. Raninen, D. E. Tyler and E. Ollila, "Linear pooling of sample covariance matrices," in IEEE Transactions on Signal Processing, doi: 10.1109/TSP.2021.3139207.
 
 ### MATLAB scripts
 * `linpool.m` : script for computing the covariance matrix estimators. Supports real and complex-valued data.
