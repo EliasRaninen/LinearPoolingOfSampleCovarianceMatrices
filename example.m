@@ -1,15 +1,15 @@
-% Consider covariance matrix estimation in a multiclass setting, where
-% there are multiple classes (populations). We propose to estimate each
-% class covariance matrix as a linear combination of all of the class
-% sample covariance matrices (SCM). This approach is shown to reduce the
-% estimation error when the sample sizes are limited and the true class 
-% covariance matrices share a similar structure. This script demonstrates
-% an effective method for estimating the minimum mean squared error 
-% coefficients for the linear combination when the samples are drawn from
-% (unspecified) elliptically symmetric distributions with finite fourth 
-% moments. For more information, see E. Raninen, D.E. Tyler, and E. Ollila
-% "Linear pooling of sample covariance matrices", arXiv preprint,
-% arXiv:2008.05854, 2021.
+% Consider covariance matrix estimation in a multiclass setting, where there are
+% multiple classes (populations). We propose to estimate each class covariance
+% matrix as a linear combination of all of the class sample covariance matrices
+% (SCM). This approach is shown to reduce the estimation error when the sample
+% sizes are limited and the true class covariance matrices share a similar
+% structure. This script demonstrates an effective method for estimating the
+% minimum mean squared error coefficients for the linear combination when the
+% samples are drawn from (unspecified) elliptically symmetric distributions with
+% finite fourth moments. For more information, see the article: E. Raninen, D.
+% E. Tyler and E. Ollila, "Linear pooling of sample covariance matrices," in
+% IEEE Transactions on Signal Processing, Vol 70, pp. 659-672, 2021, doi:
+% 10.1109/TSP.2021.3139207.
 
 % This script demonstrates the proposed linear pooling of SCMs.
 %
@@ -48,8 +48,8 @@ trueMeans{4} = randn(p,1);
 % number of Monte Carlos
 nmc = 1000;
 
-NSE1 = nan(nmc,K); % normalized squared error (NSE) for LIN1
-NSE2 = nan(nmc,K); % for LIN2
+NSE1 = nan(nmc,K); % for normalized squared error (NSE)
+NSE2 = nan(nmc,K);
 
 for mc=1:nmc
     %% Generate multivariate t samples from classes
@@ -58,7 +58,7 @@ for mc=1:nmc
     % To generate multivariate t with covariance Sig, we need to divide
     % Sig with the variance dof/(dof-2).
     variance = dof./(dof-2);
-    
+
     dataFromClasses = cell(K,1);
     for k=1:K
         Sig = trueCovarianceMatrices{k};
@@ -69,26 +69,26 @@ for mc=1:nmc
         % add the mean
         dataFromClasses{k} = X + repmat(trueMeans{k}.', n(k), 1);
     end
-    
+
     %% Estimate covariance matrices from the data
-    
+
     % with identity shrinkage
     [LIN_POOL_1, A_1] = linpool(dataFromClasses,'linear');
-    
+
     % convex with identity shrinkage
     [LIN_POOL_2, A_2] = linpool(dataFromClasses,'convex');
 
-    
     %% Compute normalized squared error NSE
     NSE = @(A,k) norm(A-trueCovarianceMatrices{k},'fro')^2/norm(trueCovarianceMatrices{k},'fro')^2;
     for k=1:K
         NSE1(mc,k) = NSE(LIN_POOL_1{k},k);
         NSE2(mc,k) = NSE(LIN_POOL_2{k},k);
     end
-    
+
     if mod(mc,20)==0; fprintf('.'); end
 end
 fprintf('\n');
+
 %% NMSE
 
 % Average results over Monte Carlos

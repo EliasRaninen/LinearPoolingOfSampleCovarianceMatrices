@@ -1,9 +1,9 @@
 function [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirst,aI_LB)
-% LINPOOL computes regularized sample covariance matrix estimates by pooling
-% the class SCMs (and possibly the identity matrix) via a non-negative
-% linear combination as explained in E. Raninen, D. E. Tyler, and E. Ollila,
-% "Linear pooling of sample covariance matrices", arXiv preprint,
-% arXiv:2008.05854, 2021.
+% LINPOOL computes regularized sample covariance matrix estimates by pooling the
+% class SCMs (and possibly the identity matrix) via a non-negative linear
+% combination as explained in E. Raninen, D. E. Tyler and E. Ollila, "Linear
+% pooling of sample covariance matrices," in IEEE Transactions on Signal
+% Processing, Vol 70, pp. 659-672, 2021, doi: 10.1109/TSP.2021.3139207.
 %
 % Each class covariance matrix estimate is:
 %                K
@@ -47,7 +47,7 @@ function [Sigmas, A, params, QPflag] = linpool(DataCell,method,identity,onlyfirs
 %                   MSE. This can result in high error when inverting the
 %                   estimate. In these cases it may be useful to increase
 %                   the lower bound.
-%                    
+%
 %
 % OUTPUT:
 %       Sigmas    - a Kx1 cell array of computed covariance matrix
@@ -150,11 +150,11 @@ if linear % non-negative linear combination
     else
         force_identity_shrinkage_ind = false(1,numel(G));
     end
-    
+
     QP_ind = or(neg_ind,force_identity_shrinkage_ind);
     lb = zeros(size(C,1),1); % lower bound of coefficients
     if any(QP_ind)
-        QPflag = true;        
+        QPflag = true;
         for k = G(QP_ind)
             % solve coefficients of linear combination
             if verbose
@@ -172,7 +172,7 @@ else % convex combination
     QPflag = true;
     % imposing the constaint that weights are positive and sum to 1 for each class
     A = nan(size(C(:,G)));
-    
+
     lb = zeros(size(C,1),1); % lower bound of coefficients
 
     for k = G
@@ -186,7 +186,7 @@ end
 % Compute covariance matrix estimates based on A
 Sigmas = cell(numel(G),1);
 for k = G
-    if identity  
+    if identity
         Sigmas{k} = A(K+1,k)*eye(p);
     else
         Sigmas{k} = zeros(p);
@@ -262,7 +262,7 @@ else % for complex-valued data
     MSE_Sk = tau1.*trCk_2 + tau2.*tr_Ck2;
     D = diag(MSE_Sk/p);
 end
-    
+
 % Compute inner product matrix  C = [tr(Sigma_i x Sigma_j)]
 C = zeros(K);
 C(1:(K+1):K^2) = tr_Ck2;
@@ -359,9 +359,9 @@ function [kappahat, xbar] = estimate_kurt(X,xbar,is_centered,print_info)
 
 [n,p] = size(X);
 
-if isreal(X) 
+if isreal(X)
     ka_lb = -2/(p+2); % theoretical lower bound for the kurtosis parameter
-else 
+else
     ka_lb = -1/(p+1); % theoretical lower bound for kurtosis parameter
 end
 
@@ -391,7 +391,7 @@ if any(indx)
     end
 end
 
-if isreal(X) 
+if isreal(X)
     kurt1n = (n-1)/((n-2)*(n-3));
     g2 = mean(X(:,~indx).^4)./(vari(~indx).^2)-3;
     G2 = kurt1n*((n+1)*g2 + 6);
@@ -489,7 +489,7 @@ if ~islogical(print_info)
     error('Input ''print_info'' needs to be logical');
 end
 
-len = sum(X.*conj(X),2); 
+len = sum(X.*conj(X),2);
 X = X(len~=0,:);
 n = size(X,1);
 
@@ -508,7 +508,7 @@ TOL = 1.0e-10;
 for iter = 1:iterMAX
 
    Xc = bsxfun(@minus,X,smed0);
-   len = sqrt(sum(Xc.*conj(Xc),2)); 
+   len = sqrt(sum(Xc.*conj(Xc),2));
    len(len<EPS)= EPS;
    Xpsi = bsxfun(@rdivide, Xc, len);
    update = sum(Xpsi)/sum(1./len);
