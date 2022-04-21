@@ -2,7 +2,7 @@
 
 This repository contains MATLAB code for the paper E. Raninen, D. E. Tyler and
 E. Ollila, "Linear pooling of sample covariance matrices," in *IEEE Transactions
-on Signal Processing*, Vol 70, pp. 659-672, 2021, doi:
+on Signal Processing*, Vol 70, pp. 659-672, 2022, doi:
 [10.1109/TSP.2021.3139207](https://doi.org/10.1109/TSP.2021.3139207).
 
 ## Abstract
